@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Realtime Database y Storage - Subir Imagen</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-y: auto;
+        }
+
+        /* Video de fondo */
+        video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        /* Contenedor principal */
+        .content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            margin: 20px;
+        }
+
+        form, .users-table, .auth-users-table {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            margin: 12px 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        .progress-bar {
+            margin: 12px 0;
+            background-color: #e9ecef;
+            border-radius: 6px;
+            height: 20px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-bar-inner {
+            height: 100%;
+            background-color: #007bff;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Video de fondo -->
+    <video autoplay muted loop>
+        <source src="https://firebasestorage.googleapis.com/v0/b/esclava-6fc42.appspot.com/o/imagen%2Fmylivewallpapers-com-Eclipse-Berserk-4K.mp4?alt=media&token=6d6b6a26-2ed7-4ff7-8a6d-8db4f9994762">
+        Tu navegador no soporta el video.
+    </video>
+
+    <div class="content">
+        <form id="dataForm">
+            <h2>Guardar Información y Subir Imagen</h2>
+
+            <label for="nombreCompleto">Nombre Completo:</label>
+            <input type="text" id="nombreCompleto" name="nombreCompleto" required>
+
+            <label for="genero">Género:</label>
+            <select id="genero" name="genero" required>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro</option>
+            </select>
+
+            <label for="edad">Edad:</label>
+            <input type="number" id="edad" name="edad" required>
+
+            <label for="correo">Correo Electrónico:</label>
+            <input type="email" id="correo" name="correo" required>
+
+            <label for="opinion">Opinión:</label>
+            <textarea id="opinion" name="opinion" required></textarea>
+
+            <label for="contraseña">Contraseña:</label>
+            <input type="password" id="contraseña" name="contraseña" required>
+
+            <label for="imagen">Subir Imagen:</label>
+            <input type="file" id="imagen" accept="image/*">
+
+            <button type="submit">Guardar</button>
+            <button type="button" id="cancelButton" style="display: none;">Cancelar</button>
+
+            <div class="progress-bar">
+                <div class="progress-bar-inner" id="progressBar"></div>
+            </div>
+        </form>
+
+        <div class="users-table">
+            <h2>Usuarios Guardados</h2>
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Nombre Completo</th>
+                        <th>Género</th>
+                        <th>Edad</th>
+                        <th>Correo</th>
+                        <th>Opinión</th>
+                        <th>Contraseña</th>
+                        <th>Imagen</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="auth-users-table">
+            <h2>Usuarios Autenticados</h2>
+            <table id="authUsersTable">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>UID</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Script de Firebase aquí -->
+    <script>
+        // Configuración de Firebase
+        var firebaseConfig = {
+            apiKey: "API_KEY",
+            authDomain: "esclava-6fc42.firebaseapp.com",
+            databaseURL: "https://esclava-6fc42-default-rtdb.firebaseio.com",
+            projectId: "esclava-6fc42",
+            storageBucket: "esclava-6fc42.appspot.com",
+            messagingSenderId: "1098294498580",
+            appId: "1:1098294498580:web:c322cff06ed0a2c3d19e01"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        var database = firebase.database();
+
+        // Manejar el envío del formulario
+        document.getElementById('dataForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Obtener datos del formulario
+            var nombreCompleto = document.getElementById('nombreCompleto').value;
+            var genero = document.getElementById('genero').value;
+            var edad = document.getElementById('edad').value;
+            var correo = document.getElementById('correo').value;
+            var opinion = document.getElementById('opinion').value;
+            var contraseña = document.getElementById('contraseña').value;
+            var imagenFile = document.getElementById('imagen').files[0];
+
+            // Subir imagen a Firebase Storage (si se proporciona)
+            var imagenURL = "";
+            if (imagenFile) {
+                var storageRef = firebase.storage().ref('imagenes/' + imagenFile.name);
+                var uploadTask = storageRef.put(imagenFile);
+
+                uploadTask.on('state_changed', function (snapshot) {
+                    var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    document.getElementById('progressBar').style.width = progress + '%';
+                }, function (error) {
+                    console.error('Error al subir la imagen:', error);
+                }, function () {
+                    uploadTask.snapshot.ref.getDownloadURL().then(function (downloadURL) {
+                        imagenURL = downloadURL;
+                        guardarDatos(nombreCompleto, genero, edad, correo, opinion, contraseña, imagenURL);
+                    });
+                });
+            } else {
+                guardarDatos(nombreCompleto, genero, edad, correo, opinion, contraseña, imagenURL);
+            }
+        });
+
+        // Guardar datos en Firebase Realtime Database
+        function guardarDatos(nombreCompleto, genero, edad, correo, opinion, contraseña, imagenURL) {
+            var usuariosRef = database.ref('usuarios').push();
+            usuariosRef.set({
+                nombreCompleto: nombreCompleto,
+                genero: genero,
+                edad: edad,
+                correo: correo,
+                opinion: opinion,
+                contraseña: contraseña,
+                imagenURL: imagenURL
+            });
+            alert('Datos guardados exitosamente');
+            mostrarUsuarios();
+        }
+
+        // Mostrar usuarios guardados en la tabla
+        function mostrarUsuarios() {
+            var usuariosRef = database.ref('usuarios');
+            usuariosRef.on('value', function (snapshot) {
+                var usuarios = snapshot.val();
+                var usersTableBody = document.getElementById('usersTable').getElementsByTagName('tbody')[0];
+                usersTableBody.innerHTML = ''; // Limpiar tabla
+
+                for (var id in usuarios) {
+                    var user = usuarios[id];
+                    var row = usersTableBody.insertRow();
+                    row.insertCell(0).innerText = user.nombreCompleto;
+                    row.insertCell(1).innerText = user.genero;
+                    row.insertCell(2).innerText = user.edad;
+                    row.insertCell(3).innerText = user.correo;
+                    row.insertCell(4).innerText = user.opinion;
+                    row.insertCell(5).innerText = user.contraseña;
+                    var imgCell = row.insertCell(6);
+                    if (user.imagenURL) {
+                        var imgElement = document.createElement('img');
+                        imgElement.src = user.imagenURL;
+                        imgElement.style.width = '50px';
+                        imgElement.style.height = '50px';
+                        imgElement.style.objectFit = 'cover';
+                        imgCell.appendChild(imgElement);
+                    }
+                    row.insertCell(7).innerHTML = '<button onclick="borrarUsuario(\'' + id + '\')">Borrar</button>';
+                }
+            });
+        }
+
+        // Borrar usuario
+        function borrarUsuario(userId) {
+            database.ref('usuarios/' + userId).remove();
+            alert('Usuario borrado exitosamente');
+            mostrarUsuarios();
+        }
+
+        mostrarUsuarios(); // Llamada inicial para mostrar usuarios
+    </script>
+</body>
+</html>
